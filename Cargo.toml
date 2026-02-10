@@ -39,6 +39,10 @@ reth-primitives = { git = "https://github.com/paradigmxyz/reth", branch = "main"
 testcontainers = "0.15"
 serial_test = "3.0"
 
+[lib]
+name = "shadow_index"
+path = "src/lib.rs"
+
 [[bin]]
 name = "shadow-index"
 path = "src/main.rs"

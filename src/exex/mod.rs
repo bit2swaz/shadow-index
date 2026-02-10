@@ -81,6 +81,6 @@ impl<Node: FullNodeComponents> Future for ShadowExEx<Node> {
 mod tests {
     #[test]
     fn test_shadow_exex_can_be_created() {
-        assert!(true, "ShadowExEx module compiles successfully");
+        assert!(true, "shadowExEx module compiles successfully");
     }
 }
