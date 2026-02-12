@@ -19,11 +19,11 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 clap = { version = "4.5", features = ["derive", "env"] }
 url = "2.5"
+hex = "0.4"
 
 # --- Ethereum Primitives ---
-alloy-primitives = { version = "0.7", features = ["serde"] }
-alloy-sol-types = "0.7"
-alloy-rlp = "0.3"
+# Using versions that match Reth's internal dependencies
+alloy-consensus = "1.6"
 
 # --- Reth (Using main branch) ---
 reth = { git = "https://github.com/paradigmxyz/reth", branch = "main", features = ["jemalloc"] }

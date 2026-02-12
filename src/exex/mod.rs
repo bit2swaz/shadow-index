@@ -7,6 +7,9 @@ use reth_exex::{ExExContext, ExExNotification};
 use reth_node_api::FullNodeComponents;
 use tracing::info;
 
+pub mod buffer;
+pub use buffer::Batcher;
+
 pub struct ShadowExEx<Node: FullNodeComponents> {
     ctx: ExExContext<Node>,
 }

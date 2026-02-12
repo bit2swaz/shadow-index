@@ -4,6 +4,9 @@ use eyre::{Result, WrapErr};
 mod writer;
 pub use writer::ClickHouseWriter;
 
+pub mod models;
+pub use models::{BlockRow, TransactionRow, LogRow, StorageDiffRow};
+
 pub fn create_client(url: &str) -> Client {
     Client::default()
         .with_url(url)
