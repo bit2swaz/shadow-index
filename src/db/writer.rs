@@ -20,7 +20,62 @@ impl ClickHouseWriter {
             return Ok(());
         }
 
-        let mut insert = self.client.insert(table)?;
+        const MAX_ATTEMPTS: u32 = 5;
+        const BASE_DELAY_SECS: u64 = 1;
+        const BACKOFF_FACTOR: u64 = 2;
+
+        let mut attempt = 0;
+        let mut last_error = None;
+
+        while attempt < MAX_ATTEMPTS {
+            attempt += 1;
+
+            match self.try_insert_batch(table, rows).await {
+                Ok(_) => {
+                    if attempt > 1 {
+                        tracing::info!(
+                            "successfully inserted {} rows into table '{}' after {} attempts",
+                            rows.len(),
+                            table,
+                            attempt
+                        );
+                    } else {
+                        tracing::debug!("successfully inserted {} rows into table '{}'", rows.len(), table);
+                    }
+                    return Ok(());
+                }
+                Err(e) => {
+                    last_error = Some(e);
+
+                    if attempt < MAX_ATTEMPTS {
+                        let delay_secs = BASE_DELAY_SECS * BACKOFF_FACTOR.pow(attempt - 1);
+                        tracing::warn!(
+                            "DB write to table '{}' failed (attempt {}/{}). retrying in {}s... Error: {}",
+                            table,
+                            attempt,
+                            MAX_ATTEMPTS,
+                            delay_secs,
+                            last_error.as_ref().unwrap()
+                        );
+                        tokio::time::sleep(tokio::time::Duration::from_secs(delay_secs)).await;
+                    }
+                }
+            }
+        }
+
+        Err(eyre::eyre!(
+            "CRITICAL: ClickHouse unreachable after {} attempts. circuit breaker tripped. last error: {}",
+            MAX_ATTEMPTS,
+            last_error.unwrap()
+        ))
+    }
+
+    async fn try_insert_batch<T>(&self, table: &str, rows: &[T]) -> Result<()>
+    where
+        T: Row + Serialize,
+    {
+        let mut insert = self.client.insert(table)
+            .wrap_err_with(|| format!("failed to create insert statement for table '{}'", table))?;
         
         for row in rows {
             insert.write(row).await
@@ -30,7 +85,6 @@ impl ClickHouseWriter {
         insert.end().await
             .wrap_err_with(|| format!("failed to finalize insert into table '{}'", table))?;
         
-        tracing::debug!("successfully inserted {} rows into table '{}'", rows.len(), table);
         Ok(())
     }
 
@@ -221,6 +275,46 @@ mod tests {
         assert_eq!(sign_sum.unwrap(), 0, "sum of signs should be 0 (commits cancelled by reverts)");
 
         println!("reorg test passed - CollapsingMergeTree logic verified");
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_retry_logic() {
+        use std::time::Instant;
+
+        let invalid_url = "http://localhost:9999";
+        let client = crate::db::create_client(invalid_url);
+        let writer = ClickHouseWriter::new(client);
+
+        let test_rows = vec![TestBlockRow::new(1, 1)];
+
+        let start = Instant::now();
+        let result = writer.insert_batch("blocks", &test_rows).await;
+        let elapsed = start.elapsed();
+
+        assert!(result.is_err(), "should fail after max retries");
+
+        let error_msg = result.unwrap_err().to_string();
+        
+        assert!(
+            error_msg.contains("CRITICAL: ClickHouse unreachable after 5 attempts"),
+            "error should mention circuit breaker and 5 attempts. Got: {}",
+            error_msg
+        );
+
+        let min_expected_secs = 14;
+        let elapsed_secs = elapsed.as_secs();
+
+        assert!(
+            elapsed_secs >= min_expected_secs,
+            "should take at least {} seconds with exponential backoff. took {} seconds",
+            min_expected_secs,
+            elapsed_secs
+        );
+
+        println!(
+            "circuit breaker test passed: failed after 5 retries with exponential backoff in {} seconds",
+            elapsed_secs
+        );
     }
 
     #[tokio::test]

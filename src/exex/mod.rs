@@ -109,6 +109,10 @@ where
                             info!("received ChainReorged notification");
                             let revert_result = futures::executor::block_on(this.process_chain(old, -1));
                             if let Err(e) = revert_result {
+                                tracing::error!(
+                                    "ExEx circuit breaker tripped during reorg revert! shutting down node. Error: {}",
+                                    e
+                                );
                                 return Poll::Ready(Err(e));
                             }
                             futures::executor::block_on(this.process_chain(new, 1))
@@ -116,6 +120,10 @@ where
                     };
 
                     if let Err(e) = process_result {
+                        tracing::error!(
+                            "ExEx circuit breaker tripped! shutting down node to prevent data desync. Error: {}",
+                            e
+                        );
                         return Poll::Ready(Err(e));
                     }
 
@@ -131,6 +139,10 @@ where
                     if !this.batcher.is_empty() {
                         info!("ExEx shutting down, flushing remaining {} rows", this.batcher.total_rows());
                         if let Err(e) = futures::executor::block_on(this.writer.flush(&mut this.batcher)) {
+                            tracing::error!(
+                                "ExEx circuit breaker tripped during shutdown flush! error: {}",
+                                e
+                            );
                             return Poll::Ready(Err(e));
                         }
                     }
