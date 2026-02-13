@@ -23,11 +23,15 @@ hex = "0.4"
 
 # --- Ethereum Primitives ---
 # Using versions that match Reth's internal dependencies
+alloy-primitives = "1.5"
 alloy-consensus = "1.6"
+revm = "34"
+revm-database = "10"
 
 # --- Reth (Using main branch) ---
 reth = { git = "https://github.com/paradigmxyz/reth", branch = "main", features = ["jemalloc"] }
 reth-exex = { git = "https://github.com/paradigmxyz/reth", branch = "main" }
+reth-execution-types = { git = "https://github.com/paradigmxyz/reth", branch = "main" }
 reth-node-api = { git = "https://github.com/paradigmxyz/reth", branch = "main" }
 reth-node-ethereum = { git = "https://github.com/paradigmxyz/reth", branch = "main" }
 reth-tracing = { git = "https://github.com/paradigmxyz/reth", branch = "main" }

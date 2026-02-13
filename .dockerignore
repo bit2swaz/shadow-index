@@ -1,0 +1,39 @@
+# Ignore build artifacts
+target/
+**/*.rs.bk
+
+# Ignore Git
+.git/
+.gitignore
+
+# Ignore Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Ignore documentation
+*.md
+docs/
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore test artifacts
+tests/fixtures/
+coverage/
+
+# Ignore CI/CD
+.github/
+.gitlab-ci.yml
+
+# Ignore environment files
+.env
+.env.*
+
+# Ignore data directories
+data/
+reth_data/
+clickhouse_data/

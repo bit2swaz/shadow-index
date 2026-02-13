@@ -3,6 +3,9 @@ use reth_primitives::{SealedBlock, Receipt, TransactionSigned, Log};
 use alloy_consensus::transaction::Transaction;
 use alloy_consensus::transaction::SignerRecoverable;
 
+pub mod state;
+pub use state::transform_state;
+
 pub fn transform_block(block: &SealedBlock, sign: i8) -> (BlockRow, Vec<TransactionRow>) {
     let header = block.header();
     let block_number = block.number;

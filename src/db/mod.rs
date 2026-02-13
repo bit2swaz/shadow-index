@@ -1,7 +1,7 @@
 use clickhouse::Client;
 use eyre::{Result, WrapErr};
 
-mod writer;
+pub mod writer;
 pub use writer::ClickHouseWriter;
 
 pub mod models;

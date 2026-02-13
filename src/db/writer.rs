@@ -37,6 +37,42 @@ impl ClickHouseWriter {
     pub fn client(&self) -> &Client {
         &self.client
     }
+
+    pub async fn flush(&self, batcher: &mut crate::exex::buffer::Batcher) -> Result<()> {
+        let total_rows = batcher.total_rows();
+        
+        if total_rows == 0 {
+            tracing::debug!("flush called but batcher is empty, skipping");
+            return Ok(());
+        }
+
+        tracing::info!("flushing {} total rows to ClickHouse", total_rows);
+
+        if !batcher.blocks.is_empty() {
+            self.insert_batch("blocks", &batcher.blocks).await
+                .wrap_err("failed to insert blocks")?;
+        }
+
+        if !batcher.transactions.is_empty() {
+            self.insert_batch("transactions", &batcher.transactions).await
+                .wrap_err("failed to insert transactions")?;
+        }
+
+        if !batcher.logs.is_empty() {
+            self.insert_batch("logs", &batcher.logs).await
+                .wrap_err("failed to insert logs")?;
+        }
+
+        if !batcher.storage_diffs.is_empty() {
+            self.insert_batch("storage_diffs", &batcher.storage_diffs).await
+                .wrap_err("failed to insert storage_diffs")?;
+        }
+
+        batcher.clear();
+        
+        tracing::info!("successfully flushed {} rows to ClickHouse", total_rows);
+        Ok(())
+    }
 }
 
 #[cfg(test)]

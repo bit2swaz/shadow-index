@@ -1,0 +1,25 @@
+# Prometheus Configuration for Shadow-Index
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'shadow-index'
+    environment: 'production'
+
+# Scrape configurations
+scrape_configs:
+  # Shadow-Index ExEx Metrics
+  - job_name: 'shadow-index'
+    static_configs:
+      - targets: ['shadow-index:9001']
+        labels:
+          service: 'shadow-index-exex'
+    
+  # ClickHouse Metrics (optional)
+  - job_name: 'clickhouse'
+    static_configs:
+      - targets: ['clickhouse:9363']
+        labels:
+          service: 'clickhouse'
+    # ClickHouse metrics endpoint (if enabled)
+    metrics_path: '/metrics'

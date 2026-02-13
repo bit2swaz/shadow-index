@@ -10056,6 +10056,7 @@ name = "shadow-index"
 version = "0.1.0"
 dependencies = [
  "alloy-consensus",
+ "alloy-primitives",
  "async-trait",
  "clap",
  "clickhouse",
@@ -10064,12 +10065,15 @@ dependencies = [
  "hex",
  "reth",
  "reth-db",
+ "reth-execution-types",
  "reth-exex",
  "reth-node-api",
  "reth-node-ethereum",
  "reth-primitives",
  "reth-provider",
  "reth-tracing",
+ "revm",
+ "revm-database",
  "serde",
  "serde_json",
  "serial_test",
