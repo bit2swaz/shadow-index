@@ -4,11 +4,13 @@ use std::task::{Context, Poll};
 use std::sync::Arc;
 
 use alloy_consensus::BlockHeader;
+use eyre::WrapErr;
 use futures::StreamExt;
 use reth_exex::{ExExContext, ExExNotification};
-use reth_node_api::FullNodeComponents;
+use reth_node_api::{FullNodeComponents, Block};
 use reth_execution_types::Chain;
 use reth_primitives::EthPrimitives;
+use reth_provider::{BlockNumReader, BlockReader, ReceiptProvider};
 use tracing::info;
 use metrics::{counter, gauge};
 
@@ -24,6 +26,7 @@ pub struct ShadowExEx<Node: FullNodeComponents> {
     writer: ClickHouseWriter,
     batcher: Batcher,
     cursor: CursorManager,
+    backfill_completed: bool,
 }
 
 impl<Node> ShadowExEx<Node>
@@ -36,6 +39,7 @@ where
             writer,
             batcher: Batcher::new(),
             cursor,
+            backfill_completed: false,
         }
     }
 
@@ -49,7 +53,6 @@ where
         for (block, receipts) in chain.blocks_and_receipts() {
             let block_number = block.number();
             
-            // Track highest block number for cursor update
             if block_number > highest_block {
                 highest_block = block_number;
             }
@@ -97,11 +100,76 @@ where
             
             self.writer.flush(&mut self.batcher).await?;
             
-            // Update cursor after successful flush - crash-safe checkpoint
             self.cursor.update_cursor(highest_block)?;
             info!("cursor updated to block {}", highest_block);
         }
         
+        Ok(())
+    }
+
+    async fn backfill_historical_blocks(&mut self) -> eyre::Result<()> {
+        let head_block = self.ctx.provider().best_block_number()
+            .wrap_err("failed to get best block number")?;
+        let cursor_block = self.cursor.last_processed_block;
+
+        if cursor_block >= head_block {
+            info!("cursor at block {}, head at block {} - no backfill needed", cursor_block, head_block);
+            return Ok(());
+        }
+
+        let total_blocks = head_block - cursor_block;
+        info!(
+            "starting historical backfill: cursor at block {}, head at block {} ({} blocks to process)",
+            cursor_block, head_block, total_blocks
+        );
+
+        for block_num in (cursor_block + 1)..=head_block {
+            let block = self.ctx.provider()
+                .block_by_number(block_num)
+                .wrap_err_with(|| format!("failed to fetch block {}", block_num))?
+                .ok_or_else(|| eyre::eyre!("block {} not found", block_num))?;
+
+            let receipts = self.ctx.provider()
+                .receipts_by_block(block_num.into())
+                .wrap_err_with(|| format!("failed to fetch receipts for block {}", block_num))?
+                .unwrap_or_default();
+
+            let sealed_block = block.seal_slow();
+
+            let (block_row, tx_rows) = transform_block(&sealed_block, 1);
+            let tx_count = tx_rows.len();
+            self.batcher.push_block(block_row);
+            self.batcher.push_transactions(tx_rows);
+
+            let log_rows = transform_logs(&receipts, block_num, 1);
+            let log_count = log_rows.len();
+            self.batcher.push_logs(log_rows);
+
+            counter!("shadow_index_blocks_processed_total").increment(1);
+            let total_events = tx_count + log_count;
+            counter!("shadow_index_events_captured_total").increment(total_events as u64);
+
+            gauge!("shadow_index_buffer_saturation").set(self.batcher.total_rows() as f64);
+
+            if self.batcher.should_flush() {
+                self.writer.flush(&mut self.batcher).await?;
+                self.cursor.update_cursor(block_num)?;
+
+                let progress = ((block_num - cursor_block) as f64 / total_blocks as f64) * 100.0;
+                info!(
+                    "backfilling... block {}/{} ({:.2}%)",
+                    block_num, head_block, progress
+                );
+            }
+        }
+
+        if !self.batcher.is_empty() {
+            info!("backfill complete, flushing final {} rows", self.batcher.total_rows());
+            self.writer.flush(&mut self.batcher).await?;
+            self.cursor.update_cursor(head_block)?;
+        }
+
+        info!("historical backfill complete: processed {} blocks", total_blocks);
         Ok(())
     }
 }
@@ -114,7 +182,25 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.get_mut();
+        
+        if !this.backfill_completed {
+            info!("checking for historical backfill...");
+            match futures::executor::block_on(this.backfill_historical_blocks()) {
+                Ok(()) => {
+                    this.backfill_completed = true;
+                    info!("backfill phase complete, entering live notification loop");
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "ExEx circuit breaker tripped during backfill! shutting down node. Error: {}",
+                        e
+                    );
+                    return Poll::Ready(Err(e));
+                }
+            }
+        }
 
+        
         loop {
             match this.ctx.notifications.poll_next_unpin(cx) {
                 Poll::Ready(Some(notification)) => {
