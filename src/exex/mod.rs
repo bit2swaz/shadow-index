@@ -17,22 +17,25 @@ pub use buffer::Batcher;
 
 use crate::db::writer::ClickHouseWriter;
 use crate::transform::{transform_block, transform_logs, transform_state};
+use crate::utils::CursorManager;
 
 pub struct ShadowExEx<Node: FullNodeComponents> {
     ctx: ExExContext<Node>,
     writer: ClickHouseWriter,
     batcher: Batcher,
+    cursor: CursorManager,
 }
 
 impl<Node> ShadowExEx<Node>
 where
     Node: FullNodeComponents<Types: reth_node_api::NodeTypes<Primitives = EthPrimitives>>,
 {
-    pub fn new(ctx: ExExContext<Node>, writer: ClickHouseWriter) -> Self {
+    pub fn new(ctx: ExExContext<Node>, writer: ClickHouseWriter, cursor: CursorManager) -> Self {
         Self { 
             ctx,
             writer,
             batcher: Batcher::new(),
+            cursor,
         }
     }
 
@@ -41,8 +44,15 @@ where
         chain: &Arc<Chain<EthPrimitives>>,
         sign: i8,
     ) -> eyre::Result<()> {
+        let mut highest_block = 0u64;
+        
         for (block, receipts) in chain.blocks_and_receipts() {
             let block_number = block.number();
+            
+            // Track highest block number for cursor update
+            if block_number > highest_block {
+                highest_block = block_number;
+            }
             
             let sealed_block = block.sealed_block();
             
@@ -86,6 +96,10 @@ where
             );
             
             self.writer.flush(&mut self.batcher).await?;
+            
+            // Update cursor after successful flush - crash-safe checkpoint
+            self.cursor.update_cursor(highest_block)?;
+            info!("cursor updated to block {}", highest_block);
         }
         
         Ok(())

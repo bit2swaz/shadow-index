@@ -29,12 +29,16 @@ fn main() -> eyre::Result<()> {
         schema_manager.initialize_schema().await
             .expect("Failed to initialize ClickHouse schema");
 
+        let cursor = utils::CursorManager::new("shadow-index.cursor")
+            .expect("Failed to initialize cursor manager");
+        tracing::info!("cursor initialized, last processed block: {}", cursor.last_processed_block);
+
         let writer = db::writer::ClickHouseWriter::new(client);
 
         let handle = builder
             .node(EthereumNode::default())
             .install_exex("shadow-index", move |ctx| async move {
-                Ok(exex::ShadowExEx::new(ctx, writer))
+                Ok(exex::ShadowExEx::new(ctx, writer, cursor))
             })
             .launch()
             .await?;
