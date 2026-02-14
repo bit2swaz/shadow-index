@@ -10,6 +10,7 @@ use reth_node_api::FullNodeComponents;
 use reth_execution_types::Chain;
 use reth_primitives::EthPrimitives;
 use tracing::info;
+use metrics::{counter, gauge};
 
 pub mod buffer;
 pub use buffer::Batcher;
@@ -46,15 +47,27 @@ where
             let sealed_block = block.sealed_block();
             
             let (block_row, tx_rows) = transform_block(sealed_block, sign);
+            let tx_count = tx_rows.len();
             self.batcher.push_block(block_row);
             self.batcher.push_transactions(tx_rows);
             
             let log_rows = transform_logs(receipts, block_number, sign);
+            let log_count = log_rows.len();
             self.batcher.push_logs(log_rows);
             
             let bundle_state = chain.execution_outcome().state();
             let storage_diff_rows = transform_state(bundle_state, block_number, sign);
+            let state_diff_count = storage_diff_rows.len();
             self.batcher.push_storage_diffs(storage_diff_rows);
+            
+            counter!("shadow_index_blocks_processed_total").increment(1);
+            
+            let total_events = tx_count + log_count + state_diff_count;
+            counter!("shadow_index_events_captured_total").increment(total_events as u64);
+            
+            if sign == -1 {
+                counter!("shadow_index_reorgs_handled_total").increment(1);
+            }
             
             info!(
                 "processed block {} (sign={}) - batcher now has {} rows",
@@ -63,6 +76,8 @@ where
                 self.batcher.total_rows()
             );
         }
+        
+        gauge!("shadow_index_buffer_saturation").set(self.batcher.total_rows() as f64);
         
         if self.batcher.should_flush() {
             info!(

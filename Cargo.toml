@@ -21,6 +21,10 @@ clap = { version = "4.5", features = ["derive", "env"] }
 url = "2.5"
 hex = "0.4"
 
+# --- Metrics & Observability ---
+metrics = "0.22"
+metrics-exporter-prometheus = "0.13"
+
 # --- Ethereum Primitives ---
 # Using versions that match Reth's internal dependencies
 alloy-primitives = "1.5"

@@ -1,6 +1,7 @@
 use clickhouse::{Client, Row};
 use eyre::{Result, WrapErr};
 use serde::Serialize;
+use metrics::{counter, histogram};
 
 pub struct ClickHouseWriter {
     client: Client,
@@ -48,6 +49,9 @@ impl ClickHouseWriter {
                     last_error = Some(e);
 
                     if attempt < MAX_ATTEMPTS {
+                        // Metrics: Track retry attempts
+                        counter!("shadow_index_db_retries_total").increment(1);
+                        
                         let delay_secs = BASE_DELAY_SECS * BACKOFF_FACTOR.pow(attempt - 1);
                         tracing::warn!(
                             "DB write to table '{}' failed (attempt {}/{}). retrying in {}s... Error: {}",
@@ -63,6 +67,8 @@ impl ClickHouseWriter {
             }
         }
 
+        counter!("shadow_index_circuit_breaker_trips_total").increment(1);
+        
         Err(eyre::eyre!(
             "CRITICAL: ClickHouse unreachable after {} attempts. circuit breaker tripped. last error: {}",
             MAX_ATTEMPTS,
@@ -74,6 +80,8 @@ impl ClickHouseWriter {
     where
         T: Row + Serialize,
     {
+        let start = std::time::Instant::now();
+        
         let mut insert = self.client.insert(table)
             .wrap_err_with(|| format!("failed to create insert statement for table '{}'", table))?;
         
@@ -84,6 +92,8 @@ impl ClickHouseWriter {
         
         insert.end().await
             .wrap_err_with(|| format!("failed to finalize insert into table '{}'", table))?;
+        
+        histogram!("shadow_index_db_latency_seconds").record(start.elapsed().as_secs_f64());
         
         Ok(())
     }
