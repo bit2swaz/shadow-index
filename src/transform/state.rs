@@ -1,11 +1,7 @@
 use crate::db::models::StorageDiffRow;
 use revm::database::BundleState;
 
-pub fn transform_state(
-    bundle: &BundleState,
-    block_number: u64,
-    sign: i8,
-) -> Vec<StorageDiffRow> {
+pub fn transform_state(bundle: &BundleState, block_number: u64, sign: i8) -> Vec<StorageDiffRow> {
     let mut storage_diffs = Vec::new();
 
     for (address, account) in bundle.state.iter() {
@@ -170,7 +166,11 @@ mod tests {
 
         let diffs = transform_state(&bundle, 300, 1);
 
-        assert_eq!(diffs.len(), 2, "should have 2 storage diffs (one per account)");
+        assert_eq!(
+            diffs.len(),
+            2,
+            "should have 2 storage diffs (one per account)"
+        );
 
         let addresses: Vec<Vec<u8>> = diffs.iter().map(|d| d.address.clone()).collect();
         assert!(addresses.contains(&addr1.as_slice().to_vec()));

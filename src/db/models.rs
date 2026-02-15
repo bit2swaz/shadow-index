@@ -4,23 +4,23 @@ use serde::Serialize;
 #[derive(Debug, Clone, Row, Serialize)]
 pub struct BlockRow {
     pub block_number: u64,
-    
+
     pub sign: i8,
-    
+
     pub hash: Vec<u8>,
-    
+
     pub parent_hash: Vec<u8>,
-    
+
     pub timestamp: i64,
-    
+
     pub gas_used: u64,
-    
+
     pub base_fee: u128,
-    
+
     pub miner: Vec<u8>,
-    
+
     pub state_root: Vec<u8>,
-    
+
     pub extra_data: String,
 }
 
@@ -44,33 +44,33 @@ impl BlockRow {
 #[derive(Debug, Clone, Row, Serialize)]
 pub struct TransactionRow {
     pub tx_hash: Vec<u8>,
-    
+
     pub block_number: u64,
-    
+
     pub tx_index: u32,
-    
+
     pub sign: i8,
-    
+
     pub from: Vec<u8>,
-    
+
     pub to: Option<Vec<u8>>,
-    
+
     pub value: String,
-    
+
     pub input: String,
-    
+
     pub status: u8,
-    
+
     pub nonce: u64,
-    
+
     pub gas_limit: u64,
-    
+
     pub gas_price: u128,
-    
+
     pub max_fee_per_gas: Option<u128>,
-    
+
     pub max_priority_fee_per_gas: Option<u128>,
-    
+
     pub chain_id: u64,
 }
 
@@ -99,21 +99,21 @@ impl TransactionRow {
 #[derive(Debug, Clone, Row, Serialize)]
 pub struct LogRow {
     pub block_number: u64,
-    
+
     pub sign: i8,
-    
+
     pub tx_hash: Vec<u8>,
-    
+
     pub tx_index: u32,
-    
+
     pub log_index: u32,
-    
+
     pub address: Vec<u8>,
-    
+
     pub topic0: Vec<u8>,
-    
+
     pub topics: Vec<Vec<u8>>,
-    
+
     pub data: String,
 }
 
@@ -142,13 +142,13 @@ impl LogRow {
 #[derive(Debug, Clone, Row, Serialize)]
 pub struct StorageDiffRow {
     pub block_number: u64,
-    
+
     pub sign: i8,
-    
+
     pub address: Vec<u8>,
-    
+
     pub slot: Vec<u8>,
-    
+
     pub value: Vec<u8>,
 }
 
@@ -228,15 +228,15 @@ mod tests {
     fn test_transaction_nullable_fields() {
         let tx_hash = vec![1u8; 32];
         let mut tx = TransactionRow::new(tx_hash, 100, 0, 1);
-        
+
         assert_eq!(tx.to, None);
-        
+
         tx.to = Some(vec![0xAA; 20]);
         assert!(tx.to.is_some());
-        
+
         assert_eq!(tx.max_fee_per_gas, None);
         assert_eq!(tx.max_priority_fee_per_gas, None);
-        
+
         tx.max_fee_per_gas = Some(1000000000);
         tx.max_priority_fee_per_gas = Some(1000000);
         assert!(tx.max_fee_per_gas.is_some());
@@ -247,7 +247,7 @@ mod tests {
     fn test_value_as_string() {
         let tx_hash = vec![1u8; 32];
         let mut tx = TransactionRow::new(tx_hash, 100, 0, 1);
-        
+
         tx.value = "1000000000000000000".to_string();
         assert_eq!(tx.value, "1000000000000000000");
     }

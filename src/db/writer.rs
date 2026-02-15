@@ -1,7 +1,7 @@
 use clickhouse::{Client, Row};
 use eyre::{Result, WrapErr};
-use serde::Serialize;
 use metrics::{counter, histogram};
+use serde::Serialize;
 
 pub struct ClickHouseWriter {
     client: Client,
@@ -41,7 +41,11 @@ impl ClickHouseWriter {
                             attempt
                         );
                     } else {
-                        tracing::debug!("successfully inserted {} rows into table '{}'", rows.len(), table);
+                        tracing::debug!(
+                            "successfully inserted {} rows into table '{}'",
+                            rows.len(),
+                            table
+                        );
                     }
                     return Ok(());
                 }
@@ -51,7 +55,7 @@ impl ClickHouseWriter {
                     if attempt < MAX_ATTEMPTS {
                         // Metrics: Track retry attempts
                         counter!("shadow_index_db_retries_total").increment(1);
-                        
+
                         let delay_secs = BASE_DELAY_SECS * BACKOFF_FACTOR.pow(attempt - 1);
                         tracing::warn!(
                             "DB write to table '{}' failed (attempt {}/{}). retrying in {}s... Error: {}",
@@ -68,7 +72,7 @@ impl ClickHouseWriter {
         }
 
         counter!("shadow_index_circuit_breaker_trips_total").increment(1);
-        
+
         Err(eyre::eyre!(
             "CRITICAL: ClickHouse unreachable after {} attempts. circuit breaker tripped. last error: {}",
             MAX_ATTEMPTS,
@@ -81,20 +85,26 @@ impl ClickHouseWriter {
         T: Row + Serialize,
     {
         let start = std::time::Instant::now();
-        
-        let mut insert = self.client.insert(table)
+
+        let mut insert = self
+            .client
+            .insert(table)
             .wrap_err_with(|| format!("failed to create insert statement for table '{}'", table))?;
-        
+
         for row in rows {
-            insert.write(row).await
+            insert
+                .write(row)
+                .await
                 .wrap_err_with(|| format!("failed to write row to table '{}'", table))?;
         }
-        
-        insert.end().await
+
+        insert
+            .end()
+            .await
             .wrap_err_with(|| format!("failed to finalize insert into table '{}'", table))?;
-        
+
         histogram!("shadow_index_db_latency_seconds").record(start.elapsed().as_secs_f64());
-        
+
         Ok(())
     }
 
@@ -104,7 +114,7 @@ impl ClickHouseWriter {
 
     pub async fn flush(&self, batcher: &mut crate::exex::buffer::Batcher) -> Result<()> {
         let total_rows = batcher.total_rows();
-        
+
         if total_rows == 0 {
             tracing::debug!("flush called but batcher is empty, skipping");
             return Ok(());
@@ -113,27 +123,31 @@ impl ClickHouseWriter {
         tracing::info!("flushing {} total rows to ClickHouse", total_rows);
 
         if !batcher.blocks.is_empty() {
-            self.insert_batch("blocks", &batcher.blocks).await
+            self.insert_batch("blocks", &batcher.blocks)
+                .await
                 .wrap_err("failed to insert blocks")?;
         }
 
         if !batcher.transactions.is_empty() {
-            self.insert_batch("transactions", &batcher.transactions).await
+            self.insert_batch("transactions", &batcher.transactions)
+                .await
                 .wrap_err("failed to insert transactions")?;
         }
 
         if !batcher.logs.is_empty() {
-            self.insert_batch("logs", &batcher.logs).await
+            self.insert_batch("logs", &batcher.logs)
+                .await
                 .wrap_err("failed to insert logs")?;
         }
 
         if !batcher.storage_diffs.is_empty() {
-            self.insert_batch("storage_diffs", &batcher.storage_diffs).await
+            self.insert_batch("storage_diffs", &batcher.storage_diffs)
+                .await
                 .wrap_err("failed to insert storage_diffs")?;
         }
 
         batcher.clear();
-        
+
         tracing::info!("successfully flushed {} rows to ClickHouse", total_rows);
         Ok(())
     }
@@ -223,7 +237,11 @@ mod tests {
             .fetch_one()
             .await;
 
-        assert!(count.is_ok(), "count query should succeed: {:?}", count.err());
+        assert!(
+            count.is_ok(),
+            "count query should succeed: {:?}",
+            count.err()
+        );
         assert_eq!(count.unwrap(), 10, "should have inserted 10 rows");
 
         println!("insert batch integration test passed");
@@ -274,7 +292,10 @@ mod tests {
 
         assert!(total_rows.is_ok(), "count query should succeed");
         let count = total_rows.unwrap();
-        assert_eq!(count, 10, "should have 10 rows before collapsing (5 commits + 5 reverts)");
+        assert_eq!(
+            count, 10,
+            "should have 10 rows before collapsing (5 commits + 5 reverts)"
+        );
 
         let sign_sum: Result<i64, clickhouse::error::Error> = client
             .query("SELECT sum(sign) FROM blocks WHERE block_number >= 100 AND block_number < 105")
@@ -282,7 +303,11 @@ mod tests {
             .await;
 
         assert!(sign_sum.is_ok(), "sign sum query should succeed");
-        assert_eq!(sign_sum.unwrap(), 0, "sum of signs should be 0 (commits cancelled by reverts)");
+        assert_eq!(
+            sign_sum.unwrap(),
+            0,
+            "sum of signs should be 0 (commits cancelled by reverts)"
+        );
 
         println!("reorg test passed - CollapsingMergeTree logic verified");
     }
@@ -304,7 +329,7 @@ mod tests {
         assert!(result.is_err(), "should fail after max retries");
 
         let error_msg = result.unwrap_err().to_string();
-        
+
         assert!(
             error_msg.contains("CRITICAL: ClickHouse unreachable after 5 attempts"),
             "error should mention circuit breaker and 5 attempts. Got: {}",
@@ -353,7 +378,7 @@ mod tests {
 
         let empty_rows: Vec<TestBlockRow> = vec![];
         let result = writer.insert_batch("blocks", &empty_rows).await;
-        
+
         assert!(result.is_ok(), "empty batch insert should succeed");
         println!("empty batch test passed");
     }
@@ -388,10 +413,14 @@ mod tests {
         }
 
         let result = writer.insert_batch("blocks", &rows).await;
-        assert!(result.is_ok(), "large batch insert should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "large batch insert should succeed: {:?}",
+            result.err()
+        );
 
         tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-        
+
         let count: Result<u64, clickhouse::error::Error> = client
             .query("SELECT count(*) FROM blocks WHERE sign = 1")
             .fetch_one()
