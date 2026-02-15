@@ -33,6 +33,9 @@ coverage/
 .env
 .env.*
 
+# Ignore local state files
+*.cursor
+
 # Ignore data directories
 data/
 reth_data/

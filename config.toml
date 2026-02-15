@@ -1,0 +1,97 @@
+# Shadow-Index Configuration File
+# This file provides defaults that can be overridden by environment variables.
+# Environment variables use the format: SHADOW_INDEX__SECTION__KEY
+# Example: SHADOW_INDEX__CLICKHOUSE__URL=http://prod-db:8123
+
+# ============================================================================
+# ClickHouse Database Configuration
+# ============================================================================
+[clickhouse]
+# Database connection URL
+# Default: "http://localhost:8123"
+# Env: SHADOW_INDEX__CLICKHOUSE__URL
+url = "http://localhost:8123"
+
+# Database username
+# Default: "default"
+# Env: SHADOW_INDEX__CLICKHOUSE__USERNAME
+username = "default"
+
+# Database password
+# Default: "" (empty)
+# Env: SHADOW_INDEX__CLICKHOUSE__PASSWORD
+password = ""
+
+# Target database name
+# Default: "shadow_index"
+# Env: SHADOW_INDEX__CLICKHOUSE__DATABASE
+database = "shadow_index"
+
+# ============================================================================
+# ExEx Pipeline Configuration
+# ============================================================================
+[exex]
+# Maximum number of rows to buffer before forcing a flush
+# Larger values = better throughput, higher memory usage
+# Default: 10000
+# Env: SHADOW_INDEX__EXEX__BUFFER_SIZE
+buffer_size = 10000
+
+# Time interval (milliseconds) before forcing a flush
+# Lower values = lower latency, more frequent DB writes
+# Default: 100
+# Env: SHADOW_INDEX__EXEX__FLUSH_INTERVAL_MS
+flush_interval_ms = 100
+
+# ============================================================================
+# Historical Backfill Configuration
+# ============================================================================
+[backfill]
+# Enable historical backfill on startup
+# If true, indexes blocks from cursor to chain head before live sync
+# Default: true
+# Env: SHADOW_INDEX__BACKFILL__ENABLED
+enabled = true
+
+# Number of blocks to fetch per batch during backfill
+# Larger values = faster backfill, higher memory usage
+# Default: 100
+# Env: SHADOW_INDEX__BACKFILL__BATCH_SIZE
+batch_size = 100
+
+# ============================================================================
+# Cursor File Configuration
+# ============================================================================
+[cursor]
+# Path to the cursor file for state persistence
+# This file tracks the last successfully indexed block
+# Default: "shadow-index.cursor"
+# Env: SHADOW_INDEX__CURSOR__FILE_PATH
+file_path = "shadow-index.cursor"
+
+# ============================================================================
+# Example Production Configuration
+# ============================================================================
+# For production deployment, create a separate config file or use environment variables:
+#
+# [clickhouse]
+# url = "http://clickhouse-prod.internal:8123"
+# username = "shadow_admin"
+# password = "your-secure-password-here"
+# database = "shadow_index_mainnet"
+#
+# [exex]
+# buffer_size = 50000  # Larger buffer for production throughput
+# flush_interval_ms = 500  # Higher latency acceptable
+#
+# [backfill]
+# enabled = false  # Disable if already synced
+# batch_size = 500  # Larger batches for faster catchup
+#
+# ============================================================================
+# Example Environment Variable Overrides
+# ============================================================================
+# export SHADOW_INDEX__CLICKHOUSE__URL="http://prod-clickhouse:8123"
+# export SHADOW_INDEX__CLICKHOUSE__PASSWORD="secure_password"
+# export SHADOW_INDEX__EXEX__BUFFER_SIZE=50000
+# export SHADOW_INDEX__BACKFILL__ENABLED=false

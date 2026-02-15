@@ -34,10 +34,23 @@ where
     Node: FullNodeComponents<Types: reth_node_api::NodeTypes<Primitives = EthPrimitives>>,
 {
     pub fn new(ctx: ExExContext<Node>, writer: ClickHouseWriter, cursor: CursorManager) -> Self {
+        Self::with_config(ctx, writer, cursor, 10_000, 100)
+    }
+
+    pub fn with_config(
+        ctx: ExExContext<Node>,
+        writer: ClickHouseWriter,
+        cursor: CursorManager,
+        buffer_size: usize,
+        flush_interval_ms: u64,
+    ) -> Self {
         Self {
             ctx,
             writer,
-            batcher: Batcher::new(),
+            batcher: Batcher::with_thresholds(
+                buffer_size,
+                std::time::Duration::from_millis(flush_interval_ms),
+            ),
             cursor,
             backfill_completed: false,
         }

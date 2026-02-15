@@ -13,6 +13,14 @@ pub fn create_client(url: &str) -> Client {
     Client::default().with_url(url).with_database("default")
 }
 
+pub fn create_client_from_config(config: &crate::config::ClickHouseConfig) -> Client {
+    Client::default()
+        .with_url(&config.url)
+        .with_database(&config.database)
+        .with_user(&config.username)
+        .with_password(&config.password)
+}
+
 pub struct SchemaManager {
     client: Client,
 }

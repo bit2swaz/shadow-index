@@ -50,10 +50,18 @@ impl ClickHouseWriter {
                     return Ok(());
                 }
                 Err(e) => {
+                    if !Self::is_retryable_error(&e) {
+                        tracing::error!(
+                            "non-retryable error writing to table '{}': {}",
+                            table,
+                            e
+                        );
+                        return Err(e.wrap_err("permanent database error - not retrying"));
+                    }
+
                     last_error = Some(e);
 
                     if attempt < MAX_ATTEMPTS {
-                        // Metrics: Track retry attempts
                         counter!("shadow_index_db_retries_total").increment(1);
 
                         let delay_secs = BASE_DELAY_SECS * BACKOFF_FACTOR.pow(attempt - 1);
@@ -106,6 +114,46 @@ impl ClickHouseWriter {
         histogram!("shadow_index_db_latency_seconds").record(start.elapsed().as_secs_f64());
 
         Ok(())
+    }
+
+    fn is_retryable_error(error: &eyre::Report) -> bool {
+        let error_string = format!("{:?}", error);
+        
+        let permanent_error_codes = [
+            "Code: 516",  // Authentication failed
+            "Code: 62",   // Syntax error
+            "Code: 160",  // Query/data too large
+            "Code: 60",   // Table doesn't exist
+            "Code: 81",   // Database doesn't exist
+            "Code: 36",   // Primary key violation / Schema mismatch
+            "Code: 57",   // Table already exists (shouldn't happen but permanent)
+            "Code: 47",   // Unknown identifier
+        ];
+        
+        for code in &permanent_error_codes {
+            if error_string.contains(code) {
+                return false;
+            }
+        }
+        
+        let transient_patterns = [
+            "connection refused",
+            "connection reset",
+            "timeout",
+            "timed out",
+            "broken pipe",
+            "network",
+            "503",
+            "502",
+        ];
+        
+        for pattern in &transient_patterns {
+            if error_string.to_lowercase().contains(pattern) {
+                return true;
+            }
+        }
+        
+        true
     }
 
     pub fn client(&self) -> &Client {

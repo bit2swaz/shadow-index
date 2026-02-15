@@ -1,10 +1,6 @@
 use crate::db::models::{BlockRow, LogRow, StorageDiffRow, TransactionRow};
 use std::time::{Duration, Instant};
 
-const SIZE_THRESHOLD: usize = 10_000;
-
-const TIME_THRESHOLD: Duration = Duration::from_millis(100);
-
 #[derive(Debug)]
 pub struct Batcher {
     pub blocks: Vec<BlockRow>,
@@ -16,16 +12,26 @@ pub struct Batcher {
     pub storage_diffs: Vec<StorageDiffRow>,
 
     last_flush: Instant,
+
+    size_threshold: usize,
+
+    time_threshold: Duration,
 }
 
 impl Batcher {
     pub fn new() -> Self {
+        Self::with_thresholds(10_000, Duration::from_millis(100))
+    }
+
+    pub fn with_thresholds(size_threshold: usize, time_threshold: Duration) -> Self {
         Self {
             blocks: Vec::new(),
             transactions: Vec::new(),
             logs: Vec::new(),
             storage_diffs: Vec::new(),
             last_flush: Instant::now(),
+            size_threshold,
+            time_threshold,
         }
     }
 
@@ -54,9 +60,9 @@ impl Batcher {
     }
 
     pub fn should_flush(&self) -> bool {
-        let size_exceeded = self.total_rows() >= SIZE_THRESHOLD;
+        let size_exceeded = self.total_rows() >= self.size_threshold;
 
-        let time_exceeded = self.last_flush.elapsed() >= TIME_THRESHOLD;
+        let time_exceeded = self.last_flush.elapsed() >= self.time_threshold;
 
         size_exceeded || time_exceeded
     }
@@ -165,12 +171,13 @@ mod tests {
     #[test]
     fn test_should_flush_size_threshold() {
         let mut batcher = Batcher::new();
+        let size_threshold = 10_000; // Default threshold
 
-        for i in 0..SIZE_THRESHOLD {
+        for i in 0..size_threshold {
             batcher.push_transactions(vec![dummy_tx(100, i as u32, 1)]);
         }
 
-        assert_eq!(batcher.total_rows(), SIZE_THRESHOLD);
+        assert_eq!(batcher.total_rows(), size_threshold);
         assert!(
             batcher.should_flush(),
             "should flush when size threshold is reached"
@@ -265,12 +272,13 @@ mod tests {
     #[test]
     fn test_size_threshold_one_below() {
         let mut batcher = Batcher::new();
+        let size_threshold = 10_000; // Default threshold
 
-        for i in 0..(SIZE_THRESHOLD - 1) {
+        for i in 0..(size_threshold - 1) {
             batcher.push_transactions(vec![dummy_tx(100, i as u32, 1)]);
         }
 
-        assert_eq!(batcher.total_rows(), SIZE_THRESHOLD - 1);
+        assert_eq!(batcher.total_rows(), size_threshold - 1);
         assert!(
             !batcher.should_flush(),
             "should not flush one row below threshold"
@@ -286,8 +294,9 @@ mod tests {
     #[test]
     fn test_composite_trigger_size_wins() {
         let mut batcher = Batcher::new();
+        let size_threshold = 10_000; // Default threshold
 
-        for i in 0..SIZE_THRESHOLD {
+        for i in 0..size_threshold {
             batcher.push_transactions(vec![dummy_tx(100, i as u32, 1)]);
         }
 
