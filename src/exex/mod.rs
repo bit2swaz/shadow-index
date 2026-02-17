@@ -322,8 +322,4 @@ mod tests {
             "ShadowExEx module compiles successfully with EthPrimitives constraint"
         );
     }
-
-    // TODO: Update integration tests for new Reth Chain API
-    // The Chain::new constructor and blocks accessors have changed
-    // Need to update mock Chain creation and block iteration patterns
 }

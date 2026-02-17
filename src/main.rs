@@ -8,6 +8,7 @@ mod db;
 mod exex;
 mod transform;
 mod utils;
+mod api;
 
 fn main() -> eyre::Result<()> {
     let _guard = reth_tracing::RethTracer::new().init()?;
@@ -44,6 +45,28 @@ fn main() -> eyre::Result<()> {
             "cursor initialized, last processed block: {}",
             cursor.last_processed_block
         );
+
+        // Create a separate client for the API (independent connection pool)
+        let api_client = db::create_client_from_config(&app_config.clickhouse);
+        let api_state = api::AppState::new(api_client);
+        let api_router = api::create_router(api_state);
+
+        // Spawn the Axum API server in the background
+        // CRITICAL: This runs concurrently and does NOT block the ExEx
+        tokio::spawn(async move {
+            let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+                .await
+                .expect("failed to bind API server to 0.0.0.0:3000");
+            
+            tracing::info!("REST API server started on http://0.0.0.0:3000");
+            tracing::info!("  Health check: http://localhost:3000/api/health");
+            tracing::info!("  Latest blocks: http://localhost:3000/api/blocks/latest");
+            tracing::info!("  Get transaction: http://localhost:3000/api/tx/:hash");
+
+            axum::serve(listener, api_router)
+                .await
+                .expect("API server failed");
+        });
 
         let writer = db::writer::ClickHouseWriter::new(client);
 

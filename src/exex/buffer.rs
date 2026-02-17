@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn test_should_flush_size_threshold() {
         let mut batcher = Batcher::new();
-        let size_threshold = 10_000; // Default threshold
+        let size_threshold = 10_000;
 
         for i in 0..size_threshold {
             batcher.push_transactions(vec![dummy_tx(100, i as u32, 1)]);
@@ -272,7 +272,7 @@ mod tests {
     #[test]
     fn test_size_threshold_one_below() {
         let mut batcher = Batcher::new();
-        let size_threshold = 10_000; // Default threshold
+        let size_threshold = 10_000;
 
         for i in 0..(size_threshold - 1) {
             batcher.push_transactions(vec![dummy_tx(100, i as u32, 1)]);
@@ -294,7 +294,7 @@ mod tests {
     #[test]
     fn test_composite_trigger_size_wins() {
         let mut batcher = Batcher::new();
-        let size_threshold = 10_000; // Default threshold
+        let size_threshold = 10_000;
 
         for i in 0..size_threshold {
             batcher.push_transactions(vec![dummy_tx(100, i as u32, 1)]);

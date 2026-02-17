@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow-Index Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #eaeaea;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 400;
+            letter-spacing: -0.5px;
+            margin-bottom: 1rem;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #999;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #666;
+        }
+
+        .status-dot.healthy {
+            background: #eaeaea;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-dot.error {
+            background: #ff4444;
+            animation: pulse-error 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        @keyframes pulse-error {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 1.5rem;
+            border-radius: 4px;
+            transition: border-color 0.2s ease;
+        }
+
+        .stat-card:hover {
+            border-color: #555;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            color: #eaeaea;
+        }
+
+        .feed-section {
+            margin-bottom: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #333;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 400;
+            color: #999;
+        }
+
+        .last-updated {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .table-container {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #0a0a0a;
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #222;
+            opacity: 0;
+            animation: fadeInUp 0.4s ease forwards;
+        }
+
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: #222;
+        }
+
+        td {
+            padding: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .block-number {
+            color: #eaeaea;
+            font-weight: 500;
+        }
+
+        .block-hash {
+            color: #999;
+            font-family: inherit;
+        }
+
+        .block-timestamp {
+            color: #666;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-banner {
+            background: #1a0a0a;
+            border: 1px solid #ff4444;
+            color: #ff6666;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 2rem;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .error-banner.visible {
+            display: block;
+        }
+
+        footer {
+            margin-top: auto;
+            padding-top: 3rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Shadow-Index Monitor</h1>
+            <div class="status-bar">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Connecting...</span>
+            </div>
+        </header>
+
+        <div class="error-banner" id="errorBanner">
+            Connection lost. Attempting to reconnect...
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-label">Throughput</div>
+                <div class="stat-value">71,592 tx/sec</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Latency (p50)</div>
+                <div class="stat-value">4.08ms</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Latency (p95)</div>
+                <div class="stat-value">5.69ms</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Latency (p99)</div>
+                <div class="stat-value">6.30ms</div>
+            </div>
+        </div>
+
+        <div class="feed-section">
+            <div class="section-header">
+                <div class="section-title">Live Feed</div>
+                <div class="last-updated" id="lastUpdated">--</div>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Block</th>
+                            <th>Hash</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blocksTableBody">
+                        <tr>
+                            <td colspan="3" class="loading">Loading blocks...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer>
+            shadow-index
+        </footer>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        const POLL_INTERVAL = 2000;
+        
+        let isHealthy = false;
+        let pollTimeoutId = null;
+
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const errorBanner = document.getElementById('errorBanner');
+        const lastUpdated = document.getElementById('lastUpdated');
+        const blocksTableBody = document.getElementById('blocksTableBody');
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                if (!response.ok) throw new Error('Health check failed');
+                
+                const data = await response.json();
+                isHealthy = data.status === 'healthy';
+                
+                statusDot.classList.remove('error');
+                statusDot.classList.add('healthy');
+                statusText.textContent = 'Connected';
+                errorBanner.classList.remove('visible');
+                
+                return true;
+            } catch (error) {
+                console.error('Health check error:', error);
+                isHealthy = false;
+                
+                statusDot.classList.remove('healthy');
+                statusDot.classList.add('error');
+                statusText.textContent = 'Disconnected';
+                errorBanner.classList.add('visible');
+                
+                return false;
+            }
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function formatHash(hash) {
+            if (!hash) return '--';
+            return `${hash.slice(0, 10)}...${hash.slice(-8)}`;
+        }
+
+        async function fetchBlocks() {
+            try {
+                const response = await fetch(`${API_BASE}/api/blocks/latest`);
+                if (!response.ok) throw new Error('Failed to fetch blocks');
+                
+                const blocks = await response.json();
+                
+                blocksTableBody.innerHTML = '';
+                
+                blocks.forEach((block, index) => {
+                    const row = document.createElement('tr');
+                    row.style.animationDelay = `${index * 0.05}s`;
+                    
+                    row.innerHTML = `
+                        <td class="block-number">${block.number?.toLocaleString() || '--'}</td>
+                        <td class="block-hash">${formatHash(block.hash)}</td>
+                        <td class="block-timestamp">${formatTimestamp(block.timestamp)}</td>
+                    `;
+                    
+                    blocksTableBody.appendChild(row);
+                });
+                
+                const now = new Date();
+                lastUpdated.textContent = now.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                
+                if (!isHealthy) {
+                    await checkHealth();
+                }
+                
+            } catch (error) {
+                console.error('Fetch blocks error:', error);
+                
+                if (blocksTableBody.children.length === 0) {
+                    blocksTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="3" class="loading" style="color: #666;">
+                                No data available
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                await checkHealth();
+            }
+        }
+
+        function startPolling() {
+            fetchBlocks().finally(() => {
+                pollTimeoutId = setTimeout(startPolling, POLL_INTERVAL);
+            });
+        }
+
+        async function init() {
+            await checkHealth();
+            startPolling();
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (pollTimeoutId) {
+                clearTimeout(pollTimeoutId);
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>

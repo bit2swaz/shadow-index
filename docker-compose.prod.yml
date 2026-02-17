@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Production-grade Shadow-Index deployment
 # Minimal setup with only ClickHouse and Shadow-Index
 

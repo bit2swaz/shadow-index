@@ -22,6 +22,11 @@ clap = { version = "4.5", features = ["derive", "env"] }
 url = "2.5"
 hex = "0.4"
 
+# --- Web API ---
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
 # --- Metrics & Observability ---
 metrics = "0.22"
 metrics-exporter-prometheus = "0.13"

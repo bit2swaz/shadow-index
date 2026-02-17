@@ -1,0 +1,31 @@
+# Grafana Datasource Provisioning for Shadow-Index
+apiVersion: 1
+
+datasources:
+  # Prometheus - Primary metrics datasource
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 5s
+    version: 1
+
+  # ClickHouse - Direct database access for custom queries
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    url: http://clickhouse:8123
+    editable: false
+    jsonData:
+      defaultDatabase: shadow_index
+      port: 9000
+      protocol: native
+      secure: false
+      username: default
+    secureJsonData:
+      password: ""
+    version: 1
