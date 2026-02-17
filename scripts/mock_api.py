@@ -75,10 +75,9 @@ class MockAPIHandler(BaseHTTPRequestHandler):
         self.end_headers()
     
     def log_message(self, format, *args):
-        # Custom logging
-        
+        pass
+
 if __name__ == '__main__':
-    print("╔════════════════════════════════════════════════════════════╗")
     print("shadow-index mock api server")
     print("starting on http://localhost:3000")
     print("")
@@ -92,4 +91,4 @@ if __name__ == '__main__':
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\ns
+        print("\nserver stopped")
