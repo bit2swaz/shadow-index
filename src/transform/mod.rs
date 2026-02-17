@@ -57,7 +57,7 @@ fn transform_transaction(
 
     let gas_limit = tx.gas_limit();
 
-    let gas_price = tx.gas_price().unwrap_or(0) as u128;
+    let gas_price = tx.gas_price().unwrap_or(0);
 
     let max_fee_per_gas = Some(tx.max_fee_per_gas());
     let max_priority_fee_per_gas = tx.max_priority_fee_per_gas();

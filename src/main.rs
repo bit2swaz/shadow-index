@@ -3,12 +3,12 @@ use reth::cli::Cli;
 use reth_node_ethereum::EthereumNode;
 use reth_tracing::Tracer;
 
+mod api;
 mod config;
 mod db;
 mod exex;
 mod transform;
 mod utils;
-mod api;
 
 fn main() -> eyre::Result<()> {
     let _guard = reth_tracing::RethTracer::new().init()?;
@@ -57,7 +57,7 @@ fn main() -> eyre::Result<()> {
             let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
                 .await
                 .expect("failed to bind API server to 0.0.0.0:3000");
-            
+
             tracing::info!("REST API server started on http://0.0.0.0:3000");
             tracing::info!("  Health check: http://localhost:3000/api/health");
             tracing::info!("  Latest blocks: http://localhost:3000/api/blocks/latest");

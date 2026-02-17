@@ -51,11 +51,7 @@ impl ClickHouseWriter {
                 }
                 Err(e) => {
                     if !Self::is_retryable_error(&e) {
-                        tracing::error!(
-                            "non-retryable error writing to table '{}': {}",
-                            table,
-                            e
-                        );
+                        tracing::error!("non-retryable error writing to table '{}': {}", table, e);
                         return Err(e.wrap_err("permanent database error - not retrying"));
                     }
 
@@ -118,24 +114,24 @@ impl ClickHouseWriter {
 
     fn is_retryable_error(error: &eyre::Report) -> bool {
         let error_string = format!("{:?}", error);
-        
+
         let permanent_error_codes = [
-            "Code: 516",  // Authentication failed
-            "Code: 62",   // Syntax error
-            "Code: 160",  // Query/data too large
-            "Code: 60",   // Table doesn't exist
-            "Code: 81",   // Database doesn't exist
-            "Code: 36",   // Primary key violation / Schema mismatch
-            "Code: 57",   // Table already exists (shouldn't happen but permanent)
-            "Code: 47",   // Unknown identifier
+            "Code: 516", // Authentication failed
+            "Code: 62",  // Syntax error
+            "Code: 160", // Query/data too large
+            "Code: 60",  // Table doesn't exist
+            "Code: 81",  // Database doesn't exist
+            "Code: 36",  // Primary key violation / Schema mismatch
+            "Code: 57",  // Table already exists (shouldn't happen but permanent)
+            "Code: 47",  // Unknown identifier
         ];
-        
+
         for code in &permanent_error_codes {
             if error_string.contains(code) {
                 return false;
             }
         }
-        
+
         let transient_patterns = [
             "connection refused",
             "connection reset",
@@ -146,16 +142,17 @@ impl ClickHouseWriter {
             "503",
             "502",
         ];
-        
+
         for pattern in &transient_patterns {
             if error_string.to_lowercase().contains(pattern) {
                 return true;
             }
         }
-        
+
         true
     }
 
+    #[allow(dead_code)]
     pub fn client(&self) -> &Client {
         &self.client
     }

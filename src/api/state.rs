@@ -1,7 +1,7 @@
 use clickhouse::Client;
 
 /// Application state shared across all API handlers
-/// 
+///
 /// Holds a thread-safe ClickHouse client instance to prevent
 /// opening a new connection pool on every request.
 #[derive(Clone)]

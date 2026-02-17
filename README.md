@@ -576,7 +576,7 @@ this project is licensed under the mit license. see [LICENSE](LICENSE) file for 
 
 ## references
 
-- [reth book: execution extensions](https://reth.rs/developers/exex/exex.html)
+- [reth book: execution extensions](https://reth.rs/exex/overview/)
 - [clickhouse collapsingmergetree engine](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/collapsingmergetree)
 - [ethereum yellow paper](https://ethereum.github.io/yellowpaper/paper.pdf)
 

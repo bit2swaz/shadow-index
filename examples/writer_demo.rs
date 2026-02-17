@@ -1,6 +1,6 @@
 use clickhouse::Row;
 use serde::Serialize;
-use shadow_index::db::{create_client, ClickHouseWriter, SchemaManager};
+use shadow_index::db::{create_client, writer::ClickHouseWriter, SchemaManager};
 
 #[derive(Row, Serialize, Debug)]
 struct BlockRow {

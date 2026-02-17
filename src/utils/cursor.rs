@@ -64,6 +64,7 @@ impl CursorManager {
         Ok(())
     }
 
+    #[cfg(test)]
     pub fn get_last_processed_block(&self) -> u64 {
         self.last_processed_block
     }

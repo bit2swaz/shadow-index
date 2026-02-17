@@ -5,7 +5,7 @@ use shadow_index::db::writer::ClickHouseWriter;
 use shadow_index::exex::Batcher;
 use shadow_index::utils::CursorManager;
 use std::time::{Duration, Instant};
-use testcontainers::{clients::Cli, core::WaitFor, Container, GenericImage};
+use testcontainers::{clients::Cli, Container, GenericImage};
 use tokio::fs;
 
 // ========================================================================
@@ -19,8 +19,8 @@ struct ClickHouseContainer<'a> {
 
 impl<'a> ClickHouseContainer<'a> {
     async fn start(docker: &'a Cli) -> Self {
-        let image = GenericImage::new("clickhouse/clickhouse-server", "23.8")
-            .with_exposed_port(8123);
+        let image =
+            GenericImage::new("clickhouse/clickhouse-server", "23.8").with_exposed_port(8123);
 
         let container = docker.run(image);
 
@@ -32,9 +32,7 @@ impl<'a> ClickHouseContainer<'a> {
     fn client(&self) -> Client {
         let port = self.container.get_host_port_ipv4(8123);
         let url = format!("http://localhost:{}", port);
-        Client::default()
-            .with_url(url)
-            .with_database("default")
+        Client::default().with_url(url).with_database("default")
     }
 }
 
@@ -57,13 +55,17 @@ fn create_mock_block_row(block_number: u64, sign: i8) -> BlockRow {
     }
 }
 
-fn create_mock_transaction_rows(block_number: u64, tx_count: usize, sign: i8) -> Vec<TransactionRow> {
+fn create_mock_transaction_rows(
+    block_number: u64,
+    tx_count: usize,
+    sign: i8,
+) -> Vec<TransactionRow> {
     (0..tx_count)
         .map(|tx_index| {
             let mut tx_hash = vec![0u8; 32];
             tx_hash[0] = block_number as u8;
             tx_hash[1] = tx_index as u8;
-            
+
             TransactionRow {
                 tx_hash,
                 block_number,
@@ -189,11 +191,19 @@ impl LatencyStats {
     }
 
     fn max(&self) -> Duration {
-        self.latencies.iter().max().copied().unwrap_or(Duration::ZERO)
+        self.latencies
+            .iter()
+            .max()
+            .copied()
+            .unwrap_or(Duration::ZERO)
     }
 
     fn min(&self) -> Duration {
-        self.latencies.iter().min().copied().unwrap_or(Duration::ZERO)
+        self.latencies
+            .iter()
+            .min()
+            .copied()
+            .unwrap_or(Duration::ZERO)
     }
 }
 
@@ -405,8 +415,10 @@ async fn run_latency_benchmark() -> Result<()> {
 
     let mut stats = LatencyStats::new();
 
-    println!("Starting latency test (this will take ~{}s)...\n", 
-             (TOTAL_BLOCKS as u64 * BLOCK_INTERVAL_MS) / 1000);
+    println!(
+        "Starting latency test (this will take ~{}s)...\n",
+        (TOTAL_BLOCKS as u64 * BLOCK_INTERVAL_MS) / 1000
+    );
 
     for block_number in 1..=(TOTAL_BLOCKS as u64) {
         let block_start = Instant::now();
@@ -436,7 +448,10 @@ async fn run_latency_benchmark() -> Result<()> {
     println!("  Total blocks measured: {}", TOTAL_BLOCKS);
     println!();
     println!("  End-to-End Latency (block received -> data flushed):");
-    println!("    - p50 (median): {:.2}ms", stats.p50().as_secs_f64() * 1000.0);
+    println!(
+        "    - p50 (median): {:.2}ms",
+        stats.p50().as_secs_f64() * 1000.0
+    );
     println!("    - p95: {:.2}ms", stats.p95().as_secs_f64() * 1000.0);
     println!("    - p99: {:.2}ms", stats.p99().as_secs_f64() * 1000.0);
     println!("    - average: {:.2}ms", stats.avg().as_secs_f64() * 1000.0);

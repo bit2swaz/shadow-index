@@ -3,10 +3,7 @@ mod state;
 
 pub use state::AppState;
 
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 use tower_http::{
     cors::{Any, CorsLayer},
     trace::TraceLayer,
@@ -23,16 +20,12 @@ pub fn create_router(state: AppState) -> Router {
     Router::new()
         // Health check endpoint
         .route("/api/health", get(handlers::health_check))
-        
         // Block endpoints
         .route("/api/blocks/latest", get(handlers::get_latest_blocks))
-        
         // Transaction endpoints
         .route("/api/tx/:hash", get(handlers::get_transaction))
-        
         // Add state to all routes
         .with_state(state)
-        
         // Add middleware
         .layer(cors)
         .layer(TraceLayer::new_for_http())

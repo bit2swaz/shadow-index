@@ -33,6 +33,7 @@ impl<Node> ShadowExEx<Node>
 where
     Node: FullNodeComponents<Types: reth_node_api::NodeTypes<Primitives = EthPrimitives>>,
 {
+    #[allow(dead_code)]
     pub fn new(ctx: ExExContext<Node>, writer: ClickHouseWriter, cursor: CursorManager) -> Self {
         Self::with_config(ctx, writer, cursor, 10_000, 100)
     }
@@ -313,13 +314,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_shadow_exex_can_be_created() {
-        assert!(
-            true,
-            "ShadowExEx module compiles successfully with EthPrimitives constraint"
-        );
+        // successfully compiles with ethprimitives constraint
     }
 }

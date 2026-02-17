@@ -103,6 +103,7 @@ impl AppConfig {
 }
 
 impl ClickHouseConfig {
+    #[allow(dead_code)]
     pub fn connection_url(&self) -> String {
         if self.username.is_empty() && self.password.is_empty() {
             self.url.clone()

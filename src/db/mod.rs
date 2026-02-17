@@ -2,13 +2,12 @@ use clickhouse::Client;
 use eyre::{Result, WrapErr};
 
 pub mod writer;
-pub use writer::ClickHouseWriter;
 
 pub mod models;
-pub use models::{BlockRow, LogRow, StorageDiffRow, TransactionRow};
 
 pub mod migrations;
 
+#[allow(dead_code)]
 pub fn create_client(url: &str) -> Client {
     Client::default().with_url(url).with_database("default")
 }
@@ -21,10 +20,12 @@ pub fn create_client_from_config(config: &crate::config::ClickHouseConfig) -> Cl
         .with_password(&config.password)
 }
 
+#[allow(dead_code)]
 pub struct SchemaManager {
     client: Client,
 }
 
+#[allow(dead_code)]
 impl SchemaManager {
     pub fn new(client: Client) -> Self {
         Self { client }

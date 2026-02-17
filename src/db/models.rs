@@ -25,6 +25,7 @@ pub struct BlockRow {
 }
 
 impl BlockRow {
+    #[allow(dead_code)]
     pub fn new(block_number: u64, sign: i8) -> Self {
         Self {
             block_number,
@@ -75,6 +76,7 @@ pub struct TransactionRow {
 }
 
 impl TransactionRow {
+    #[allow(dead_code)]
     pub fn new(tx_hash: Vec<u8>, block_number: u64, tx_index: u32, sign: i8) -> Self {
         Self {
             tx_hash,
@@ -118,6 +120,7 @@ pub struct LogRow {
 }
 
 impl LogRow {
+    #[allow(dead_code)]
     pub fn new(
         block_number: u64,
         tx_hash: Vec<u8>,
@@ -153,6 +156,7 @@ pub struct StorageDiffRow {
 }
 
 impl StorageDiffRow {
+    #[allow(dead_code)]
     pub fn new(
         block_number: u64,
         address: Vec<u8>,

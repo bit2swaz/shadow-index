@@ -77,7 +77,7 @@ impl IntoResponse for ApiError {
 }
 
 /// Health check endpoint
-/// 
+///
 /// Returns a simple 200 OK response to indicate the API is running
 pub async fn health_check() -> Json<HealthResponse> {
     Json(HealthResponse {
@@ -86,7 +86,7 @@ pub async fn health_check() -> Json<HealthResponse> {
 }
 
 /// Get the latest 10 blocks
-/// 
+///
 /// Queries the blocks table, filtering for sign=1 (non-reorged blocks)
 /// and ordering by timestamp descending
 pub async fn get_latest_blocks(
@@ -123,7 +123,7 @@ pub async fn get_latest_blocks(
 }
 
 /// Get a specific transaction by hash
-/// 
+///
 /// Queries the transactions table for a transaction with the given hash,
 /// filtering for sign=1 (non-reorged transactions)
 pub async fn get_transaction(

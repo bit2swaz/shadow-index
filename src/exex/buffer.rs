@@ -75,6 +75,7 @@ impl Batcher {
         self.last_flush = Instant::now();
     }
 
+    #[cfg(test)]
     pub fn time_since_flush(&self) -> Duration {
         self.last_flush.elapsed()
     }
